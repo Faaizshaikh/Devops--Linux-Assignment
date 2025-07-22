@@ -1,35 +1,69 @@
 #!/bin/bash
 
-# === Log File Analyzer Script ===
+# Log Analyzer Script
+# Usage: ./my_log_analyzer.sh <log_file>
 
-# ✅ 1. Validate Argument
-LOGFILE="$1"
-if [ -z "$LOGFILE" ] || [ ! -f "$LOGFILE" ]; then
-  echo "Usage: $0 /path/to/logfile"
+LOG_FILE="$1"
+
+# ================================
+# TODO: Validate input parameters
+# ================================
+if [[ -z "$LOG_FILE" ]]; then
+  echo "Error: No log file provided."
+  echo "Usage: $0 <log_file>"
   exit 1
 fi
 
-# ✅ 2. Count Message Types
-ERROR_COUNT=$(grep -c "ERROR" "$LOGFILE")
-WARNING_COUNT=$(grep -c "WARNING" "$LOGFILE")
-INFO_COUNT=$(grep -c "INFO" "$LOGFILE")
+# ================================
+# TODO: Check if the file exists
+# ================================
+if [[ ! -f "$LOG_FILE" ]]; then
+  echo "Error: File '$LOG_FILE' not found."
+  exit 1
+fi
 
-# ✅ 3. Top 5 Most Common ERROR Messages
-TOP_ERRORS=$(grep "ERROR" "$LOGFILE" | cut -d']' -f2- | sort | uniq -c | sort -nr | head -5)
+if [[ ! -r "$LOG_FILE" ]]; then
+  echo "Error: File '$LOG_FILE' is not readable."
+  exit 1
+fi
 
-# ✅ 4. First and Last ERROR Messages
-FIRST_ERROR=$(grep "ERROR" "$LOGFILE" | head -1)
-LAST_ERROR=$(grep "ERROR" "$LOGFILE" | tail -1)
+# ================================
+# TODO: Analyze the log file
+# ================================
 
-# ✅ 5. Display Summary Report
-echo "===== LOG FILE ANALYSIS ====="
-echo "File: $LOGFILE"
-echo "-----------------------------"
-echo "ERROR messages:   $ERROR_COUNT"
-echo "WARNING messages: $WARNING_COUNT"
-echo "INFO messages:    $INFO_COUNT"
+echo "===== Log File Analysis ====="
+echo "Analyzing file: $LOG_FILE"
 echo
-echo "----- TOP 5 ERROR MESSAGES -----"
-echo "$TOP_ERRORS"
+
+# Total entries
+TOTAL_LINES=$(wc -l < "$LOG_FILE")
+echo "Total log entries: $TOTAL_LINES"
+
+# Count log levels
+INFO_COUNT=$(grep -c "INFO" "$LOG_FILE")
+WARNING_COUNT=$(grep -c "WARNING" "$LOG_FILE")
+ERROR_COUNT=$(grep -c "ERROR" "$LOG_FILE")
+
+echo "INFO entries:    $INFO_COUNT"
+echo "WARNING entries: $WARNING_COUNT"
+echo "ERROR entries:   $ERROR_COUNT"
+
+# Extract date range (assumes log starts with YYYY-MM-DD HH:MM:SS format)
+START_DATE=$(head -n 1 "$LOG_FILE" | awk '{print $1}')
+END_DATE=$(tail -n 1 "$LOG_FILE" | awk '{print $1}')
+echo "Date range:      $START_DATE to $END_DATE"
+
+# Top 5 IP addresses (if applicable)
 echo
-echo "----- ERROR TIMELINE ---
+echo "Top 5 IP addresses:"
+grep -oE '\b([0-9]{1,3}\.){3}[0-9]{1,3}\b' "$LOG_FILE" | \
+  sort | uniq -c | sort -nr | head -5
+
+# Top 5 frequent messages (removing date/time and level)
+echo
+echo "Top 5 frequent messages:"
+awk '{$1=""; $2=""; $3=""; print $0}' "$LOG_FILE" | \
+  sed 's/^ *//' | sort | uniq -c | sort -nr | head -5
+
+echo
+echo "===== End of Report ====="
